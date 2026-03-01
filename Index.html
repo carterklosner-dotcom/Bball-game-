@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retro Hoops</title>
+<style>
+body {
+  margin:0;
+  background:#1b1b1b;
+  text-align:center;
+  font-family:monospace;
+  color:white;
+}
+canvas {
+  background:#d18b47;
+  display:block;
+  margin:auto;
+  image-rendering: pixelated;
+}
+#score {
+  padding:10px;
+  font-size:20px;
+}
+button {
+  font-size:18px;
+  padding:10px 20px;
+  margin-top:10px;
+}
+</style>
+</head>
+<body>
+
+<div id="score">Score: 0</div>
+<canvas id="game" width="360" height="600"></canvas>
+<button onclick="resetGame()">Restart</button>
+  <button onclick="passBall()">Pass</button>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let score = 0;
+
+// Players
+let players = [
+  { x:180, y:500, r:10, hasBall:true },
+  { x:100, y:450, r:10, hasBall:false },
+  { x:260, y:450, r:10, hasBall:false }
+];
+
+let defenders = [
+  { x:180, y:300, r:10 },
+  { x:100, y:250, r:10 },
+  { x:260, y:250, r:10 }
+];
+
+let hoop = { x:180, y:120 };
+let controlledIndex = 0;
+
+// Move controlled player
+canvas.addEventListener("touchmove", (e)=>{
+  let rect = canvas.getBoundingClientRect();
+  let touchX = e.touches[0].clientX - rect.left;
+  players[controlledIndex].x = touchX;
+});
+
+// Shoot on release
+canvas.addEventListener("touchend", ()=>{
+  shoot();
+});
+
+function shoot(){
+  let shooter = players[controlledIndex];
+
+  let closest = defenders.reduce((prev, curr)=>{
+    let d1 = Math.abs(prev.x - shooter.x);
+    let d2 = Math.abs(curr.x - shooter.x);
+    return d1 < d2 ? prev : curr;
+  });
+
+  let distance = Math.abs(closest.x - shooter.x);
+  let chance = distance < 40 ? 0.3 : 0.75;
+
+  if(Math.random() < chance){
+    score += 2;
+  }
+
+  document.getElementById("score").innerText = "Score: " + score;
+}
+
+// PASS BUTTON
+function passBall(){
+  players[controlledIndex].hasBall = false;
+
+  controlledIndex = (controlledIndex + 1) % players.length;
+
+  players[controlledIndex].hasBall = true;
+}
+
+// AI movement
+function updateAI(){
+  players.forEach((p,i)=>{
+    if(i !== controlledIndex){
+      p.x += Math.sin(Date.now()/500 + i) * 0.5;
+    }
+  });
+
+  defenders.forEach((d,i)=>{
+    let target = players[i];
+    if(d.x < target.x){
+      d.x += 1.2;
+    } else {
+      d.x -= 1.2;
+    }
+  });
+}
+
+function drawCourt(){
+  ctx.fillStyle="#d18b47";
+  ctx.fillRect(0,0,360,600);
+
+  ctx.fillStyle="white";
+  ctx.fillRect(hoop.x-30, hoop.y, 60, 5);
+}
+
+function drawCircle(obj,color){
+  ctx.fillStyle=color;
+  ctx.beginPath();
+  ctx.arc(obj.x,obj.y,obj.r,0,Math.PI*2);
+  ctx.fill();
+
+  if(obj.hasBall){
+    ctx.fillStyle="orange";
+    ctx.beginPath();
+    ctx.arc(obj.x, obj.y-15, 5, 0, Math.PI*2);
+    ctx.fill();
+  }
+}
+
+function gameLoop(){
+  ctx.clearRect(0,0,360,600);
+  updateAI();
+  drawCourt();
+
+  players.forEach((p,i)=>{
+    drawCircle(p, i === controlledIndex ? "blue" : "cyan");
+  });
+
+  defenders.forEach(d=>drawCircle(d,"red"));
+
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+
+</body>
+</html>
